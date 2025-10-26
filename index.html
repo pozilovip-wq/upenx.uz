@@ -1,0 +1,663 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from "recharts";
+import { v4 as uuidv4 } from "uuid";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Download, Upload, PlusCircle, Trash2, Edit3 } from "lucide-react";
+
+/**
+ * UPNEX DASHBOARD (No backend required)
+ * -------------------------------------------------
+ * - Single-file React app with Tailwind + shadcn/ui + Recharts
+ * - Persists data to localStorage (key: upnex_data_v1)
+ * - Tracks Students, Payments (income), Expenses
+ * - Monthly filters, KPIs, charts, search, CSV/JSON import-export
+ * - Fields include: who paid, when, who received the money, etc.
+ */
+
+// ------------------------------
+// Types
+// ------------------------------
+/** @typedef {{ id: string, name: string, phone?: string, program?: string, status: 'lead'|'enrolled'|'paid', enrolledAt?: string }} Student */
+/** @typedef {{ id: string, studentId: string, amount: number, currency: string, method: 'cash'|'card'|'bank'|'transfer'|'other', receivedBy: string, paidAt: string, note?: string }} Payment */
+/** @typedef {{ id: string, category: string, amount: number, currency: string, paidTo: string, paidAt: string, method: 'cash'|'card'|'bank'|'transfer'|'other', note?: string, enteredBy: string }} Expense */
+/** @typedef {{ staff: string[]; students: Student[]; payments: Payment[]; expenses: Expense[] }} UpnexDB */
+
+const LS_KEY = "upnex_data_v1";
+
+const defaultDB /** @type {UpnexDB} */ = {
+  staff: ["Adham", "Shahzod", "Malika", "Nodira"],
+  students: [
+    { id: uuidv4(), name: "Xayitbek", phone: "+998 90 123 45 67", program: "USA - Bachelor", status: "paid", enrolledAt: isoDaysAgo(18) },
+    { id: uuidv4(), name: "Olloyor", phone: "+998 97 555 77 00", program: "Malaysia - Diploma", status: "enrolled", enrolledAt: isoDaysAgo(10) },
+    { id: uuidv4(), name: "Makhliyo", phone: "+998 97 385 79 25", program: "TESOL - Master", status: "lead", enrolledAt: isoDaysAgo(3) },
+  ],
+  payments: [
+    { id: uuidv4(), studentId: "", amount: 1500, currency: "USD", method: "card", receivedBy: "Adham", paidAt: isoDaysAgo(15), note: "Standard package" },
+    { id: uuidv4(), studentId: "", amount: 4000, currency: "USD", method: "bank", receivedBy: "Malika", paidAt: isoDaysAgo(7), note: "Premium package" },
+  ],
+  expenses: [
+    { id: uuidv4(), category: "Office Rent", amount: 400, currency: "USD", paidTo: "Landlord", paidAt: isoDaysAgo(20), method: "bank", note: "Andijan office", enteredBy: "Shahzod" },
+    { id: uuidv4(), category: "Marketing (Instagram)", amount: 120, currency: "USD", paidTo: "Meta Ads", paidAt: isoDaysAgo(8), method: "card", note: "Reels boost", enteredBy: "Adham" },
+    { id: uuidv4(), category: "Referral Commission", amount: 100, currency: "USD", paidTo: "Teacher Zaynab", paidAt: isoDaysAgo(6), method: "cash", note: "1 student", enteredBy: "Malika" },
+  ],
+};
+
+function isoDaysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString();
+}
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return defaultDB;
+    const parsed = JSON.parse(raw);
+    // Attach studentId for sample payments to first two students if empty
+    if (parsed.payments) {
+      parsed.payments = parsed.payments.map((p) => ({
+        ...p,
+        studentId: p.studentId || (parsed.students?.[0]?.id ?? ""),
+      }));
+    }
+    return parsed;
+  } catch {
+    return defaultDB;
+  }
+}
+
+function saveDB(db) {
+  localStorage.setItem(LS_KEY, JSON.stringify(db));
+}
+
+function monthKey(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMoney(n, c = "USD") {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: c }).format(n);
+  } catch {
+    return `${n.toFixed(2)} ${c}`;
+  }
+}
+
+function useLocalDB() {
+  const [db, setDB] = useState(loadDB());
+  useEffect(() => saveDB(db), [db]);
+  return [db, setDB];
+}
+
+function Header() {
+  return (
+    <div className="flex items-center justify-between mb-6">
+      <div>
+        <h1 className="text-3xl font-bold">UPNEX Admin Dashboard</h1>
+        <p className="text-sm opacity-70">Students • Payments • Expenses • Profit</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <ImportJSON />
+        <ExportJSON />
+        <ResetAll />
+      </div>
+    </div>
+  );
+}
+
+function ResetAll() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="destructive" className="rounded-2xl"><Trash2 className="w-4 h-4 mr-2"/>Reset</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reset all data?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm opacity-80">This will clear local data and reload defaults.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button onClick={() => {
+            localStorage.removeItem(LS_KEY);
+            window.location.reload();
+          }} variant="destructive">Confirm Reset</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ExportJSON() {
+  const handleExport = () => {
+    const raw = localStorage.getItem(LS_KEY) || JSON.stringify(defaultDB);
+    const blob = new Blob([raw], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `upnex-data-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <Button onClick={handleExport} className="rounded-2xl" variant="secondary"><Download className="w-4 h-4 mr-2"/>Export</Button>
+  );
+}
+
+function ImportJSON() {
+  const handleImport = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        localStorage.setItem(LS_KEY, JSON.stringify(parsed));
+        window.location.reload();
+      } catch (err) {
+        alert("Invalid JSON file");
+      }
+    };
+    reader.readAsText(file);
+  };
+  return (
+    <label className="inline-flex items-center gap-2 cursor-pointer">
+      <input type="file" accept="application/json" className="hidden" onChange={handleImport} />
+      <span className="inline-flex items-center px-3 py-2 border rounded-2xl text-sm"><Upload className="w-4 h-4 mr-2"/>Import</span>
+    </label>
+  );
+}
+
+function useMonthRange() {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+  return { year, month, setYear, setMonth, startISO: start.toISOString(), endISO: end.toISOString() };
+}
+
+function MonthPicker({ year, month, setYear, setMonth }) {
+  return (
+    <div className="flex gap-2 items-center">
+      <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+        <SelectTrigger className="w-36"><SelectValue placeholder="Month"/></SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <SelectItem key={i} value={String(i + 1)}>{new Date(0, i).toLocaleString(undefined, { month: 'long' })}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Input type="number" className="w-28" value={year} onChange={(e) => setYear(Number(e.target.value||new Date().getFullYear()))} />
+    </div>
+  );
+}
+
+function useFiltered(db, startISO, endISO, search) {
+  const students = useMemo(() => db.students.filter(s => !s.enrolledAt || (s.enrolledAt >= startISO && s.enrolledAt < endISO))
+    .filter(s => !search || matches(s, search)), [db.students, startISO, endISO, search]);
+  const payments = useMemo(() => db.payments.filter(p => p.paidAt >= startISO && p.paidAt < endISO)
+    .filter(p => !search || matches(p, search)), [db.payments, startISO, endISO, search]);
+  const expenses = useMemo(() => db.expenses.filter(x => x.paidAt >= startISO && x.paidAt < endISO)
+    .filter(x => !search || matches(x, search)), [db.expenses, startISO, endISO, search]);
+  return { students, payments, expenses };
+}
+
+function matches(obj, q) {
+  const hay = JSON.stringify(obj).toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
+
+function KPIs({ payments, expenses, students }) {
+  const revenue = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const expenseTotal = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const profit = revenue - expenseTotal;
+  const paidStudents = new Set(payments.map(p => p.studentId || p.note || p.id)).size;
+
+  const cards = [
+    { title: "Revenue", value: formatMoney(revenue), sub: `${payments.length} payments` },
+    { title: "Expenses", value: formatMoney(expenseTotal), sub: `${expenses.length} expenses` },
+    { title: "Profit", value: formatMoney(profit), sub: profit >= 0 ? "Positive" : "Negative" },
+    { title: "Students", value: String(students.length), sub: `${paidStudents} paid` },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      {cards.map((c) => (
+        <Card key={c.title} className="rounded-2xl shadow-sm">
+          <CardContent className="p-5">
+            <p className="text-sm opacity-70">{c.title}</p>
+            <p className="text-2xl font-semibold">{c.value}</p>
+            <p className="text-xs opacity-60 mt-1">{c.sub}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function RevenueExpenseChart({ db, year }) {
+  // Build monthly series for the given year
+  const data = Array.from({ length: 12 }).map((_, i) => {
+    const mStart = new Date(year, i, 1).toISOString();
+    const mEnd = new Date(year, i + 1, 1).toISOString();
+    const rev = db.payments.filter(p => p.paidAt >= mStart && p.paidAt < mEnd).reduce((s, p) => s + Number(p.amount), 0);
+    const exp = db.expenses.filter(e => e.paidAt >= mStart && e.paidAt < mEnd).reduce((s, e) => s + Number(e.amount), 0);
+    return { month: new Date(year, i, 1).toLocaleString(undefined, { month: 'short' }), revenue: rev, expenses: exp, profit: rev - exp };
+  });
+  return (
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-5">
+        <h3 className="font-semibold mb-3">Yearly Overview</h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="currentColor" stopOpacity={0.35}/>
+                  <stop offset="95%" stopColor="currentColor" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip formatter={(v, n) => [formatMoney(Number(v)), n]} />
+              <Area type="monotone" dataKey="revenue" stroke="currentColor" fillOpacity={1} fill="url(#g1)" />
+              <Area type="monotone" dataKey="expenses" stroke="currentColor" fillOpacity={0.3} />
+              <Area type="monotone" dataKey="profit" stroke="currentColor" fillOpacity={0.15} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PaymentsByStaff({ payments }) {
+  const byStaff = Object.entries(payments.reduce((acc, p) => {
+    acc[p.receivedBy] = (acc[p.receivedBy] || 0) + Number(p.amount);
+    return acc;
+  }, {})).map(([name, total]) => ({ name, total }));
+
+  return (
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-5">
+        <h3 className="font-semibold mb-3">Payments by Staff (This Month)</h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={byStaff}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip formatter={(v) => formatMoney(Number(v))} />
+              <Bar dataKey="total" fill="currentColor" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AddStudent({ db, setDB }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", program: "", status: "lead" });
+
+  const submit = () => {
+    if (!form.name) return alert("Name is required");
+    const s = { id: uuidv4(), ...form, enrolledAt: new Date().toISOString() };
+    setDB({ ...db, students: [s, ...db.students] });
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="rounded-2xl"><PlusCircle className="w-4 h-4 mr-2"/>New Student</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add Student</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <LabeledInput label="Full name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+          <LabeledInput label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+          <LabeledInput label="Program" value={form.program} onChange={(v) => setForm({ ...form, program: v })} />
+          <div>
+            <Label className="text-sm">Status</Label>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="lead">Lead</SelectItem>
+                <SelectItem value="enrolled">Enrolled</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button onClick={submit}>Save</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddPayment({ db, setDB }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ studentId: "", amount: "", currency: "USD", method: "cash", receivedBy: db.staff[0] || "", note: "" });
+
+  const submit = () => {
+    if (!form.amount) return alert("Amount is required");
+    const p = { id: uuidv4(), studentId: form.studentId, amount: Number(form.amount), currency: form.currency, method: form.method, receivedBy: form.receivedBy, paidAt: new Date().toISOString(), note: form.note };
+    setDB({ ...db, payments: [p, ...db.payments] });
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="rounded-2xl" variant="secondary"><PlusCircle className="w-4 h-4 mr-2"/>New Payment</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add Payment</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <div>
+            <Label className="text-sm">Student</Label>
+            <Select value={form.studentId} onValueChange={(v) => setForm({ ...form, studentId: v })}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Select student (optional)"/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— None —</SelectItem>
+                {db.students.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <LabeledInput label="Amount" type="number" value={form.amount} onChange={(v) => setForm({ ...form, amount: v })} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm">Currency</Label>
+              <Select value={form.currency} onValueChange={(v) => setForm({ ...form, currency: v })}>
+                <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="UZS">UZS</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm">Method</Label>
+              <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v })}>
+                <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="bank">Bank</SelectItem>
+                  <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm">Received by (Staff)</Label>
+            <Select value={form.receivedBy} onValueChange={(v) => setForm({ ...form, receivedBy: v })}>
+              <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+              <SelectContent>
+                {db.staff.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <LabeledInput label="Note" value={form.note} onChange={(v) => setForm({ ...form, note: v })} />
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button onClick={submit}>Save</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddExpense({ db, setDB }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ category: "", amount: "", currency: "USD", paidTo: "", method: "cash", note: "", enteredBy: db.staff[0] || "" });
+
+  const submit = () => {
+    if (!form.amount || !form.category) return alert("Category and amount are required");
+    const e = { id: uuidv4(), category: form.category, amount: Number(form.amount), currency: form.currency, paidTo: form.paidTo, method: form.method, note: form.note, enteredBy: form.enteredBy, paidAt: new Date().toISOString() };
+    setDB({ ...db, expenses: [e, ...db.expenses] });
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="rounded-2xl" variant="outline"><PlusCircle className="w-4 h-4 mr-2"/>New Expense</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add Expense</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <LabeledInput label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
+          <div className="grid grid-cols-2 gap-3">
+            <LabeledInput label="Amount" type="number" value={form.amount} onChange={(v) => setForm({ ...form, amount: v })} />
+            <div>
+              <Label className="text-sm">Currency</Label>
+              <Select value={form.currency} onValueChange={(v) => setForm({ ...form, currency: v })}>
+                <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="UZS">UZS</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <LabeledInput label="Paid to" value={form.paidTo} onChange={(v) => setForm({ ...form, paidTo: v })} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm">Method</Label>
+              <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v })}>
+                <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="bank">Bank</SelectItem>
+                  <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm">Entered by (Staff)</Label>
+              <Select value={form.enteredBy} onValueChange={(v) => setForm({ ...form, enteredBy: v })}>
+                <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  {db.staff.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <LabeledInput label="Note" value={form.note} onChange={(v) => setForm({ ...form, note: v })} />
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button onClick={submit}>Save</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LabeledInput({ label, value, onChange, type = "text" }) {
+  return (
+    <div>
+      <Label className="text-sm">{label}</Label>
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1"/>
+    </div>
+  );
+}
+
+function DataTable({ title, columns, rows, onDelete }) {
+  return (
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">{title}</h3>
+          <CSVButton rows={rows} columns={columns} />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left border-b">
+                {columns.map((c) => (
+                  <th key={c.key} className="py-2 pr-4 font-medium opacity-70">{c.label}</th>
+                ))}
+                {onDelete && <th className="py-2 pr-2"></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr><td className="py-3 opacity-60" colSpan={columns.length + (onDelete?1:0)}>No data</td></tr>
+              )}
+              {rows.map((r) => (
+                <tr key={r.id} className="border-b last:border-none">
+                  {columns.map((c) => (
+                    <td key={c.key} className="py-2 pr-4">{c.render ? c.render(r[c.key], r) : String(r[c.key]??"")}</td>
+                  ))}
+                  {onDelete && (
+                    <td className="py-2 pr-2 text-right">
+                      <Button size="sm" variant="ghost" onClick={() => onDelete(r.id)}><Trash2 className="w-4 h-4"/></Button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CSVButton({ rows, columns }) {
+  const handle = () => {
+    const header = columns.map(c => c.label).join(",");
+    const csvRows = rows.map(r => columns.map(c => JSON.stringify(c.csv ? c.csv(r[c.key], r) : r[c.key] ?? "")).join(","));
+    const blob = new Blob([header + "\n" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${titleCase(columns[0]?.key || 'data')}-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  return <Button variant="outline" size="sm" onClick={handle}>Export CSV</Button>;
+}
+
+function titleCase(s){return String(s).replace(/(^|\s)\w/g, t=>t.toUpperCase())}
+
+export default function UpnexDashboard() {
+  const [db, setDB] = useLocalDB();
+  const [search, setSearch] = useState("");
+  const { year, month, setYear, setMonth, startISO, endISO } = useMonthRange();
+  const { students, payments, expenses } = useFiltered(db, startISO, endISO, search);
+
+  const addStaff = () => {
+    const name = prompt("Add staff name:");
+    if (!name) return;
+    if (db.staff.includes(name)) return alert("Already exists");
+    setDB({ ...db, staff: [...db.staff, name] });
+  };
+
+  const deleteStudent = (id) => setDB({ ...db, students: db.students.filter(s => s.id !== id) });
+  const deletePayment = (id) => setDB({ ...db, payments: db.payments.filter(s => s.id !== id) });
+  const deleteExpense = (id) => setDB({ ...db, expenses: db.expenses.filter(s => s.id !== id) });
+
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <Header />
+
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <MonthPicker year={year} month={month} setYear={setYear} setMonth={setMonth} />
+        <Input placeholder="Search name, note, phone, staff..." value={search} onChange={(e)=>setSearch(e.target.value)} className="max-w-sm"/>
+        <div className="flex items-center gap-2 ml-auto">
+          <AddStudent db={db} setDB={setDB} />
+          <AddPayment db={db} setDB={setDB} />
+          <AddExpense db={db} setDB={setDB} />
+          <Button variant="ghost" onClick={addStaff}><PlusCircle className="w-4 h-4 mr-2"/>Add Staff</Button>
+        </div>
+      </div>
+
+      <KPIs payments={payments} expenses={expenses} students={students} />
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+        <div className="xl:col-span-2">
+          <RevenueExpenseChart db={db} year={year} />
+        </div>
+        <PaymentsByStaff payments={payments} />
+      </div>
+
+      <Tabs defaultValue="students" className="mt-2">
+        <TabsList className="rounded-2xl">
+          <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+        </TabsList>
+        <TabsContent value="students" className="mt-4">
+          <DataTable
+            title="Students"
+            columns={[
+              { key: "name", label: "Name" },
+              { key: "phone", label: "Phone" },
+              { key: "program", label: "Program" },
+              { key: "status", label: "Status" },
+              { key: "enrolledAt", label: "Enrolled At", render: (v)=> v ? new Date(v).toLocaleString() : "—" },
+            ]}
+            rows={students}
+            onDelete={deleteStudent}
+          />
+        </TabsContent>
+        <TabsContent value="payments" className="mt-4">
+          <DataTable
+            title="Payments (Income)"
+            columns={[
+              { key: "paidAt", label: "Paid At", render: (v)=> new Date(v).toLocaleString() },
+              { key: "studentId", label: "Student", render: (v, r)=> db.students.find(s=>s.id===v)?.name || "—" },
+              { key: "amount", label: "Amount", render: (v, r)=> formatMoney(Number(v), r.currency), csv: (v,r)=> v },
+              { key: "currency", label: "Curr." },
+              { key: "method", label: "Method" },
+              { key: "receivedBy", label: "Received By" },
+              { key: "note", label: "Note" },
+            ]}
+            rows={payments}
+            onDelete={deletePayment}
+          />
+        </TabsContent>
+        <TabsContent value="expenses" className="mt-4">
+          <DataTable
+            title="Expenses"
+            columns={[
+              { key: "paidAt", label: "Paid At", render: (v)=> new Date(v).toLocaleString() },
+              { key: "category", label: "Category" },
+              { key: "amount", label: "Amount", render: (v, r)=> formatMoney(Number(v), r.currency), csv: (v,r)=> v },
+              { key: "currency", label: "Curr." },
+              { key: "method", label: "Method" },
+              { key: "paidTo", label: "Paid To" },
+              { key: "enteredBy", label: "Entered By" },
+              { key: "note", label: "Note" },
+            ]}
+            rows={expenses}
+            onDelete={deleteExpense}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-xs opacity-60 mt-6">
+        <p>Local-only demo. For multi-user + real accounting: connect a backend (Supabase/Postgres) and add auth/roles, invoices, multi-currency fx, and audit logs.</p>
+      </motion.div>
+    </div>
+  );
+}
