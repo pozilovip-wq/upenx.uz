@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>English Test Certificate — Demo</title>
+
+  <style>
+    :root {
+      --green: #58CC02;
+      --blue: #1CB0F6;
+      --orange: #FA811B;
+      --text: #4B4B4B;
+      --secondary: #777777;
+      --light-grey: #AFAFAF;
+      --border: #E5E5E5;
+      --soft: #F0F0F0;
+      --white: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--white);
+      color: var(--text);
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    }
+
+    /* =========================
+       DEMO NOTICE
+    ========================== */
+
+    .demo-banner {
+      width: 100%;
+      background: #fff4e8;
+      color: #8a4b08;
+      border-bottom: 1px solid #ffd6ad;
+      text-align: center;
+      padding: 9px 15px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+
+    /* =========================
+       TOP NAVIGATION
+    ========================== */
+
+    .topbar {
+      height: 72px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    .menu-button {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+    }
+
+    .menu-button:hover {
+      background: var(--soft);
+    }
+
+    .hamburger {
+      width: 22px;
+      height: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .hamburger span {
+      height: 2px;
+      width: 100%;
+      background: var(--secondary);
+      border-radius: 10px;
+    }
+
+    .brand {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 19px;
+      color: var(--green);
+      white-space: nowrap;
+    }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      background: var(--green);
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .brand-icon::after {
+      content: "✓";
+      color: white;
+      font-weight: 900;
+      position: absolute;
+      left: 7px;
+      top: 3px;
+      font-size: 20px;
+    }
+
+    /* =========================
+       PAGE
+    ========================== */
+
+    .page {
+      max-width: 930px;
+      margin: 42px auto 80px;
+      padding: 0 22px;
+    }
+
+    .certificate-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .certificate-label h1 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 1px;
+      font-weight: 800;
+      color: var(--secondary);
+    }
+
+    .print-button {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--blue);
+      padding: 9px 17px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .print-button:hover {
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+
+    /* =========================
+       CERTIFICATE CARD
+    ========================== */
+
+    .certificate {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--white);
+      overflow: hidden;
+    }
+
+    .certificate-header {
+      padding: 25px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .certificate-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--green);
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .certificate-brand .brand-icon {
+      width: 28px;
+      height: 28px;
+    }
+
+    .official {
+      font-size: 11px;
+      color: var(--secondary);
+      letter-spacing: 1.2px;
+      font-weight: 800;
+    }
+
+    /* =========================
+       IDENTITY
+    ========================== */
+
+    .identity {
+      padding: 30px 32px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .photo {
+      width: 92px;
+      height: 92px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--soft);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .photo-placeholder {
+      color: var(--light-grey);
+      font-size: 32px;
+    }
+
+    .identity-info {
+      flex: 1;
+    }
+
+    .name {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 15px;
+      color: var(--text);
+    }
+
+    .details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 45px;
+    }
+
+    .detail {
+      font-size: 13px;
+    }
+
+    .detail-label {
+      display: block;
+      color: var(--secondary);
+      margin-bottom: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .detail-value {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .certificate-link {
+      color: var(--blue);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .certificate-link:hover {
+      text-decoration: underline;
+    }
+
+    /* =========================
+       SECTION
+    ========================== */
+
+    .section {
+      padding: 30px 32px;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin: 0 0 22px;
+      color: var(--text);
+    }
+
+    /* =========================
+       SCORE
+    ========================== */
+
+    .score-area {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+    }
+
+    .score-gauge {
+      width: 185px;
+      height: 115px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .gauge-svg {
+      width: 185px;
+      height: 115px;
+      overflow: visible;
+    }
+
+    .gauge-background {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 13;
+      stroke-linecap: round;
+    }
+
+    .gauge-progress {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 13;
+      stroke-linecap: round;
+      stroke-dasharray: 270;
+      stroke-dashoffset: 0;
+      transform-origin: center;
+    }
+
+    .score-number {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 16px;
+      text-align: center;
+      font-size: 43px;
+      line-height: 1;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .gauge-min,
+    .gauge-max {
+      position: absolute;
+      bottom: -2px;
+      font-size: 11px;
+      color: var(--light-grey);
+      font-weight: 700;
+    }
+
+    .gauge-min {
+      left: 8px;
+    }
+
+    .gauge-max {
+      right: 8px;
+    }
+
+    .proficiency {
+      flex: 1;
+    }
+
+    .proficiency-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .proficiency-title span {
+      color: var(--secondary);
+      font-weight: 700;
+    }
+
+    .can-do {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: var(--secondary);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .check {
+      color: var(--green);
+      font-size: 16px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    /* =========================
+       SUBSCORES
+    ========================== */
+
+    .subscores {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .subscore {
+      text-align: center;
+      padding: 22px 10px;
+      border-right: 1px solid var(--border);
+    }
+
+    .subscore:last-child {
+      border-right: none;
+    }
+
+    .subscore-label {
+      color: var(--secondary);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+
+    .subscore-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    /* =========================
+       INTEGRATED
+    ========================== */
+
+    .integrated {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .integrated-item {
+      padding: 21px 12px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+
+    .integrated-item:last-child {
+      border-right: none;
+    }
+
+    .integrated-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--secondary);
+      letter-spacing: .4px;
+      margin-bottom: 7px;
+    }
+
+    .integrated-value {
+      font-size: 23px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .integrated-description {
+      font-size: 10px;
+      color: var(--secondary);
+      line-height: 1.35;
+    }
+
+    /* =========================
+       VERIFICATION
+    ========================== */
+
+    .verification {
+      padding: 28px 32px 34px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .verification p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--secondary);
+    }
+
+    .verification a {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .verification a:hover {
+      text-decoration: underline;
+    }
+
+    .demo-warning {
+      margin-top: 18px;
+      display: inline-block;
+      padding: 7px 12px;
+      border-radius: 7px;
+      background: #fff4e8;
+      color: #8a4b08;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* =========================
+       FOOTER
+    ========================== */
+
+    footer {
+      max-width: 930px;
+      margin: 0 auto;
+      padding: 0 22px 50px;
+      color: var(--secondary);
+      text-align: center;
+      font-size: 12px;
+    }
+
+    footer a {
+      color: var(--secondary);
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    footer a:hover {
+      color: var(--blue);
+    }
+
+    /* =========================
+       MOBILE
+    ========================== */
+
+    @media (max-width: 700px) {
+
+      .topbar {
+        height: 62px;
+        padding: 0 14px;
+      }
+
+      .brand {
+        font-size: 15px;
+      }
+
+      .brand-icon {
+        width: 25px;
+        height: 25px;
+      }
+
+      .brand-icon::after {
+        font-size: 16px;
+        left: 6px;
+        top: 3px;
+      }
+
+      .page {
+        margin-top: 25px;
+        padding: 0 12px;
+      }
+
+      .certificate-label {
+        align-items: flex-start;
+      }
+
+      .identity {
+        padding: 25px 20px;
+        align-items: flex-start;
+      }
+
+      .details {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .score-area {
+        flex-direction: column;
+        gap: 20px;
+        align-items: center;
+      }
+
+      .proficiency {
+        width: 100%;
+      }
+
+      .subscores,
+      .integrated {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .subscore:nth-child(2) {
+        border-right: none;
+      }
+
+      .subscore:nth-child(-n+2) {
+        border-bottom: 1px solid var(--border);
+      }
+
+      .integrated-item:nth-child(2) {
+        border-right: none;
+      }
+
+      .integrated-item:nth-child(-n+2) {
+        border-bottom: 1px solid var(--border);
+      }
+
+      .section,
+      .verification {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+    }
+
+    /* =========================
+       PRINT
+    ========================== */
+
+    @media print {
+
+      .demo-banner,
+      .topbar,
+      .certificate-label,
+      footer,
+      .demo-warning {
+        display: none !important;
+      }
+
+      body {
+        background: white;
+      }
+
+      .page {
+        margin: 0;
+        max-width: none;
+      }
+
+      .certificate {
+        border: 1px solid #ddd;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- DEMO NOTICE -->
+  <div class="demo-banner">
+    DEMO SAMPLE — NOT AN OFFICIAL DUOLINGO ENGLISH TEST CERTIFICATE
+  </div>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+
+    <button class="menu-button" aria-label="Menu" onclick="toggleMenu()">
+      <div class="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </button>
+
+    <div class="brand">
+      <div class="brand-icon"></div>
+      English Test Demo
+    </div>
+
+  </header>
+
+  <!-- PAGE -->
+  <main class="page">
+
+    <div class="certificate-label">
+      <h1>DEMO CERTIFICATE</h1>
+
+      <button class="print-button" onclick="window.print()">
+        PRINT
+      </button>
+    </div>
+
+    <!-- CERTIFICATE -->
+    <article class="certificate">
+
+      <!-- HEADER -->
+      <div class="certificate-header">
+
+        <div class="certificate-brand">
+          <div class="brand-icon"></div>
+          English Test
+        </div>
+
+        <div class="official">
+          SAMPLE CERTIFICATE
+        </div>
+
+      </div>
+
+      <!-- IDENTITY -->
+      <section class="identity">
+
+        <div class="photo">
+          <div class="photo-placeholder">👤</div>
+        </div>
+
+        <div class="identity-info">
+
+          <div class="name">
+            SAMPLE, TEST TAKER
+          </div>
+
+          <div class="details">
+
+            <div class="detail">
+              <span class="detail-label">
+                Date of birth
+              </span>
+
+              <span class="detail-value">
+                January 01, 2000
+              </span>
+            </div>
+
+            <div class="detail">
+              <span class="detail-label">
+                Certificate ID
+              </span>
+
+              <span class="detail-value">
+                DEMO-0000-0000
+              </span>
+            </div>
+
+            <div class="detail">
+              <span class="detail-label">
+                Test date
+              </span>
+
+              <span class="detail-value">
+                January 01, 2026
+              </span>
+            </div>
+
+            <div class="detail">
+              <span class="detail-label">
+                Link
+              </span>
+
+              <a href="#" class="certificate-link"
+                 onclick="return false;">
+                demo.example.com/certificate
+              </a>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- OVERALL SCORE -->
+      <section class="section">
+
+        <h2 class="section-title">
+          Overall Score
+        </h2>
+
+        <div class="score-area">
+
+          <div class="score-gauge">
+
+            <svg class="gauge-svg"
+                 viewBox="0 0 200 125">
+
+              <path
+                class="gauge-background"
+                d="M 25 105 A 75 75 0 0 1 175 105"
+              />
+
+              <path
+                class="gauge-progress"
+                d="M 25 105 A 75 75 0 0 1 175 105"
+              />
+
+            </svg>
+
+            <div class="score-number">
+              160
+            </div>
+
+            <div class="gauge-min">
+              10
+            </div>
+
+            <div class="gauge-max">
+              160
+            </div>
+
+          </div>
+
+          <div class="proficiency">
+
+            <div class="proficiency-title">
+              Proficient:
+              <span>C2</span>
+            </div>
+
+            <div class="can-do">
+              <span class="check">✓</span>
+              <span>
+                Can understand virtually all types of texts,
+                including abstract and structurally complex
+                literary and non-literary writings.
+              </span>
+            </div>
+
+            <div class="can-do">
+              <span class="check">✓</span>
+              <span>
+                Can summarize information from different
+                formal and informal sources.
+              </span>
+            </div>
+
+            <div class="can-do">
+              <span class="check">✓</span>
+              <span>
+                Can express themselves spontaneously,
+                very fluently, and precisely.
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- INDIVIDUAL SUBSCORES -->
+      <section class="section">
+
+        <h2 class="section-title">
+          Individual Subscores
+        </h2>
+
+        <div class="subscores">
+
+          <div class="subscore">
+            <div class="subscore-label">SPEAKING</div>
+            <div class="subscore-value">160</div>
+          </div>
+
+          <div class="subscore">
+            <div class="subscore-label">WRITING</div>
+            <div class="subscore-value">160</div>
+          </div>
+
+          <div class="subscore">
+            <div class="subscore-label">READING</div>
+            <div class="subscore-value">160</div>
+          </div>
+
+          <div class="subscore">
+            <div class="subscore-label">LISTENING</div>
+            <div class="subscore-value">155</div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- INTEGRATED SUBSCORES -->
+      <section class="section">
+
+        <h2 class="section-title">
+          Integrated Subscores
+        </h2>
+
+        <div class="integrated">
+
+          <div class="integrated-item">
+
+            <div class="integrated-title">
+              PRODUCTION
+            </div>
+
+            <div class="integrated-value">
+              160
+            </div>
+
+            <div class="integrated-description">
+              Ability to speak and write
+            </div>
+
+          </div>
+
+          <div class="integrated-item">
+
+            <div class="integrated-title">
+              LITERACY
+            </div>
+
+            <div class="integrated-value">
+              160
+            </div>
+
+            <div class="integrated-description">
+              Ability to write and read
+            </div>
+
+          </div>
+
+          <div class="integrated-item">
+
+            <div class="integrated-title">
+              COMPREHENSION
+            </div>
+
+            <div class="integrated-value">
+              160
+            </div>
+
+            <div class="integrated-description">
+              Ability to read and listen
+            </div>
+
+          </div>
+
+          <div class="integrated-item">
+
+            <div class="integrated-title">
+              CONVERSATION
+            </div>
+
+            <div class="integrated-value">
+              160
+            </div>
+
+            <div class="integrated-description">
+              Ability to listen and speak
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- VERIFICATION -->
+      <div class="verification">
+
+        <p>
+          This is a demonstration certificate.
+          It has no official testing or verification status.
+        </p>
+
+        <div class="demo-warning">
+          SAMPLE / DEMO ONLY
+        </div>
+
+      </div>
+
+    </article>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+
+    <div>
+      <a href="#">Test Takers</a>
+      <a href="#">Institutions</a>
+      <a href="#">Researchers</a>
+      <a href="#">Support</a>
+    </div>
+
+    <br />
+
+    © 2026 English Test Demo
+
+  </footer>
+
+
+  <script>
+
+    function toggleMenu() {
+      alert(
+        "Demo navigation menu"
+      );
+    }
+
+  </script>
+
+</body>
+</html>
